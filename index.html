@@ -596,4 +596,143 @@
             // Betöltjük az első szint opcióit
             loadLevel1Options();
             // Kezdjük a játékot
-            next
+            nextQuestion();
+        }
+
+        // Következő kérdés betöltése
+        function nextQuestion() {
+            // Elrejtjük a következő gombot és visszajelzést
+            nextButton.style.display = "none";
+            feedbackDiv.style.display = "none";
+            
+            // Visszaállítjuk a legördülő menüket
+            level1Select.selectedIndex = 0;
+            level2Select.selectedIndex = 0;
+            level3Select.selectedIndex = 0;
+            level2Select.disabled = true;
+            level3Select.disabled = true;
+            
+            // Kiválasztunk egy véletlen gyógyszert, amit még nem használtunk
+            const drugKeys = Object.keys(drugDatabase).filter(drug => !usedDrugs.includes(drug));
+            
+            if (drugKeys.length === 0) {
+                // Ha elfogytak a gyógyszerek, játék vége
+                drugDisplay.textContent = "Gratulálok! Végigjártad az összes gyógyszert!";
+                checkButton.disabled = true;
+                return;
+            }
+            
+            const randomIndex = Math.floor(Math.random() * drugKeys.length);
+            currentDrug = drugKeys[randomIndex];
+            usedDrugs.push(currentDrug);
+            correctAnswers = drugDatabase[currentDrug];
+            
+            // Megjelenítjük a gyógyszert
+            drugDisplay.textContent = currentDrug;
+            
+            // Engedélyezjük az ellenőrzés gombot
+            checkButton.disabled = false;
+            
+            // Növeljük a kérdések számát
+            totalQuestions++;
+            totalSpan.textContent = totalQuestions;
+        }
+
+        // 1. szint opcióinak betöltése
+        function loadLevel1Options() {
+            level1Select.innerHTML = '<option value="">Válassz fő hatástani csoportot...</option>';
+            
+            for (const mainGroup in hierarchy) {
+                const option = document.createElement("option");
+                option.value = mainGroup;
+                option.textContent = mainGroup;
+                level1Select.appendChild(option);
+            }
+            
+            level1Select.disabled = false;
+        }
+
+        // 2. szint opcióinak frissítése az 1. szint választása alapján
+        function updateLevel2Options() {
+            level2Select.innerHTML = '<option value="">Válassz alcsoportot...</option>';
+            level3Select.innerHTML = '<option value="">Válassz részletes csoportot...</option>';
+            level3Select.disabled = true;
+            
+            const selectedMainGroup = level1Select.value;
+            
+            if (selectedMainGroup && hierarchy[selectedMainGroup]) {
+                for (const subGroup in hierarchy[selectedMainGroup]) {
+                    const option = document.createElement("option");
+                    option.value = subGroup;
+                    option.textContent = subGroup;
+                    level2Select.appendChild(option);
+                }
+                
+                level2Select.disabled = false;
+            } else {
+                level2Select.disabled = true;
+            }
+        }
+
+        // 3. szint opcióinak frissítése a 2. szint választása alapján
+        function updateLevel3Options() {
+            level3Select.innerHTML = '<option value="">Válassz részletes csoportot...</option>';
+            
+            const selectedMainGroup = level1Select.value;
+            const selectedSubGroup = level2Select.value;
+            
+            if (selectedMainGroup && selectedSubGroup && 
+                hierarchy[selectedMainGroup] && 
+                hierarchy[selectedMainGroup][selectedSubGroup] &&
+                hierarchy[selectedMainGroup][selectedSubGroup].length > 0) {
+                
+                for (const detailGroup of hierarchy[selectedMainGroup][selectedSubGroup]) {
+                    const option = document.createElement("option");
+                    option.value = detailGroup;
+                    option.textContent = detailGroup;
+                    level3Select.appendChild(option);
+                }
+                
+                level3Select.disabled = false;
+            } else {
+                level3Select.disabled = true;
+            }
+        }
+
+        // Válaszok ellenőrzése
+        function checkAnswers() {
+            const userLevel1 = level1Select.value;
+            const userLevel2 = level2Select.value;
+            const userLevel3 = level3Select.value;
+            
+            // Ellenőrizzük a válaszokat
+            const isCorrect = (
+                userLevel1 === correctAnswers[0] &&
+                userLevel2 === correctAnswers[1] &&
+                (correctAnswers[2] === "" || userLevel3 === correctAnswers[2])
+            );
+            
+            // Visszajelzés megjelenítése
+            feedbackDiv.style.display = "block";
+            feedbackDiv.textContent = isCorrect ? 
+                "Helyes válasz! ✅" : 
+                `Helytelen válasz! ❌ A helyes válasz: ${correctAnswers.join(" > ")}`;
+            
+            feedbackDiv.className = isCorrect ? "feedback correct" : "feedback incorrect";
+            
+            // Pontszám frissítése
+            if (isCorrect) {
+                score++;
+                scoreSpan.textContent = score;
+            }
+            
+            // Következő gomb megjelenítése
+            nextButton.style.display = "block";
+            checkButton.disabled = true;
+        }
+
+        // Játék indítása
+        initGame();
+    </script>
+</body>
+</html>
