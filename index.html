@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gyógyszer Hatástani Csoport Párosító</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        .game-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .drug-display {
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+            padding: 10px;
+            background-color: #e8f4f8;
+            border-radius: 5px;
+        }
+        .level-container {
+            margin-bottom: 15px;
+        }
+        select {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+        }
+        select:disabled {
+            background-color: #f5f5f5;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-top: 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .feedback {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .correct {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .incorrect {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .score-display {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Gyógyszer Hatástani Csoport Párosító</h1>
+    <div class="game-container">
+        <div class="score-display">
+            Pontszám: <span id="score">0</span> / <span id="total">0</span>
+        </div>
+        <div class="drug-display" id="current-drug"></div>
+        
+        <div class="level-container">
+            <label for="level1">1. szint (Fő hatástani csoport):</label>
+            <select id="level1" disabled>
+                <option value="">Válassz fő hatástani csoportot...</option>
+            </select>
+        </div>
+        
+        <div class="level-container">
+            <label for="level2">2. szint (Alcsoport):</label>
+            <select id="level2" disabled>
+                <option value="">Válassz alcsoportot...</option>
+            </select>
+        </div>
+        
+        <div class="level-container">
+            <label for="level3">3. szint (Részletes csoport):</label>
+            <select id="level3" disabled>
+                <option value="">Válassz részletes csoportot...</option>
+            </select>
+        </div>
+        
+        <button id="check-button" disabled>Ellenőrzés</button>
+        <button id="next-button" style="display: none;">Következő gyógyszer</button>
+        
+        <div id="feedback" class="feedback" style="display: none;"></div>
+    </div>
+
+    <script>
+        // Gyógyszer adatbázis
+        const drugDatabase = {
+            // Glukokortikoidok
+            "HYDROCORTISON": ["GLUKOKORTIKOIDOK", "SZISZTÉMÁS SZEREK", "Természetes hormonok"],
+            "CORTISON": ["GLUKOKORTIKOIDOK", "SZISZTÉMÁS SZEREK", "Természetes hormonok"],
+            "FLUDROCORTISON": ["GLUKOKORTIKOIDOK", "SZISZTÉMÁS SZEREK", "Mineralokortikoid hatású szer"],
+            "PREDNISOLON": ["GLUKOKORTIKOIDOK", "SZISZTÉMÁS SZEREK", ""],
+            "PREDNISON": ["GLUKOKORTIKOIDOK", "SZISZTÉMÁS SZEREK", ""],
+            "METHYLPREDNISOLON": ["GLUKOKORTIKOIDOK", "SZISZTÉMÁS SZEREK", ""],
+            "TRIAMCINOLON": ["GLUKOKORTIKOIDOK", "SZISZTÉMÁS SZEREK", ""],
+            "DEXAMETHASON": ["GLUKOKORTIKOIDOK", "SZISZTÉMÁS SZEREK", ""],
+            "BETAMETHASON": ["GLUKOKORTIKOIDOK", "SZISZTÉMÁS SZEREK", ""],
+            "BUDESONID": ["GLUKOKORTIKOIDOK", "CSAK LOKÁLISAN ALKALMAZOTT SZEREK", ""],
+            "MOMETASON": ["GLUKOKORTIKOIDOK", "CSAK LOKÁLISAN ALKALMAZOTT SZEREK", ""],
+            "CICLESONID": ["GLUKOKORTIKOIDOK", "CSAK LOKÁLISAN ALKALMAZOTT SZEREK", ""],
+            "FLUOCINOLON ACETONID": ["GLUKOKORTIKOIDOK", "CSAK LOKÁLISAN ALKALMAZOTT SZEREK", ""],
+            "BECLOMETHASON": ["GLUKOKORTIKOIDOK", "CSAK LOKÁLISAN ALKALMAZOTT SZEREK", ""],
+            "FLUTICASON": ["GLUKOKORTIKOIDOK", "CSAK LOKÁLISAN ALKALMAZOTT SZEREK", ""],
+            "CLOBETASOL": ["GLUKOKORTIKOIDOK", "CSAK LOKÁLISAN ALKALMAZOTT SZEREK", ""],
+            "FLUOROMETHOLON": ["GLUKOKORTIKOIDOK", "CSAK LOKÁLISAN ALKALMAZOTT SZEREK", ""],
+            
+            // Immunszuppresszív szerek
+            "CICLOSPORIN": ["IMMUNSZUPPRESSZÍV SZEREK", "TRANSZPLANTÁCIÓ GYÓGYSZEREI", "Calcineurin-gátlók"],
+            "TACROLIMUS": ["IMMUNSZUPPRESSZÍV SZEREK", "TRANSZPLANTÁCIÓ GYÓGYSZEREI", "Calcineurin-gátlók"],
+            "PIMECROLIMUS": ["IMMUNSZUPPRESSZÍV SZEREK", "TRANSZPLANTÁCIÓ GYÓGYSZEREI", "Calcineurin-gátlók"],
+            "SIROLIMUS": ["IMMUNSZUPPRESSZÍV SZEREK", "TRANSZPLANTÁCIÓ GYÓGYSZEREI", "mTOR-gátlók"],
+            "BASILIXIMAB": ["IMMUNSZUPPRESSZÍV SZEREK", "TRANSZPLANTÁCIÓ GYÓGYSZEREI", "IL-2R-antitestek"],
+            "BELATACEPT": ["IMMUNSZUPPRESSZÍV SZEREK", "TRANSZPLANTÁCIÓ GYÓGYSZEREI", "Kostimuláció (CD80/86) gátló"],
+            "AZATHIOPRIN": ["IMMUNSZUPPRESSZÍV SZEREK", "TRANSZPLANTÁCIÓ GYÓGYSZEREI", "Purin antimetabolitok"],
+            "MYCOFENOLAT": ["IMMUNSZUPPRESSZÍV SZEREK", "TRANSZPLANTÁCIÓ GYÓGYSZEREI", "Purin antimetabolitok"],
+            "ANTI-LYMPHOCYTA GLOBULIN": ["IMMUNSZUPPRESSZÍV SZEREK", "TRANSZPLANTÁCIÓ GYÓGYSZEREI", ""],
+            "ANTI-THYMOCYTA GLOBULIN": ["IMMUNSZUPPRESSZÍV SZEREK", "TRANSZPLANTÁCIÓ GYÓGYSZEREI", ""],
+            
+            // Gyulladásos betegségek gyógyszerei
+            "METHOTREXAT": ["GYULLADÁSOS BETEGSÉGEK GYÓGYSZEREI", "DMARD SZEREK (SZINTETIKUS)", ""],
+            "LEFLUNOMID": ["GYULLADÁSOS BETEGSÉGEK GYÓGYSZEREI", "DMARD SZEREK (SZINTETIKUS)", ""],
+            "ROFLUMILAST": ["GYULLADÁSOS BETEGSÉGEK GYÓGYSZEREI", "DMARD SZEREK (SZINTETIKUS)", "PDE4-gátlók"],
+            "APREMILAST": ["GYULLADÁSOS BETEGSÉGEK GYÓGYSZEREI", "DMARD SZEREK (SZINTETIKUS)", "PDE4-gátlók"],
+            "BARICITINIB": ["GYULLADÁSOS BETEGSÉGEK GYÓGYSZEREI", "DMARD SZEREK (SZINTETIKUS)", "JAK-kináz gátlók"],
+            "TOFACITINIB": ["GYULLADÁSOS BETEGSÉGEK GYÓGYSZEREI", "DMARD SZEREK (SZINTETIKUS)", "JAK-kináz gátlók"],
+            "SULFASALAZIN": ["GYULLADÁSOS BETEGSÉGEK GYÓGYSZEREI", "DMARD SZEREK (SZINTETIKUS)", "Egyéb"],
+            "CHLOROQUIN": ["GYULLADÁSOS BETEGSÉGEK GYÓGYSZEREI", "DMARD SZEREK (SZINTETIKUS)", "Egyéb"],
+            "ETANERCEPT": ["GYULLADÁSOS BETEGSÉGEK GYÓGYSZEREI", "ANTICITOKIN TERÁPIA", "TNF-α"],
+            "INFLIXIMAB": ["GYULLADÁSOS BETEGSÉGEK GYÓGYSZEREI", "ANTICITOKIN TERÁPIA", "TNF-α"],
+            "ADALIMUMAB": ["GYULLADÁSOS BETEGSÉGEK GYÓGYSZEREI", "ANTICITOKIN TERÁPIA", "TNF-α"],
+            "CERTOLIZUMAB PEGOL": ["GYULLADÁSOS BETEGSÉGEK GYÓGYSZEREI", "ANTICITOKIN TERÁPIA", "TNF-α"],
+            "ANAKINRA": ["GYULLADÁSOS BETEGSÉGEK GYÓGYSZEREI", "ANTICITOKIN TERÁPIA", "IL-1β"],
+            "TOCILIZUMAB": ["GYULLADÁSOS BETEGSÉGEK GYÓGYSZEREI", "ANTICITOKIN TERÁPIA", "IL-6R"],
+            "USTEKINUMAB": ["GYULLADÁSOS BETEGSÉGEK GYÓGYSZEREI", "ANTICITOKIN TERÁPIA", "IL-12/23"],
+            "RITUXIMAB": ["GYULLADÁSOS BETEGSÉGEK GYÓGYSZEREI", "ANTI-LYMPHOCYTA TERÁPIA", "CD20"],
+            "ALEMTUZUMAB": ["GYULLADÁSOS BETEGSÉGEK GYÓGYSZEREI", "ANTI-LYMPHOCYTA TERÁPIA", "CD52"],
+            "NATALIZUMAB": ["GYULLADÁSOS BETEGSÉGEK GYÓGYSZEREI", "ANTIADHÉZIÓS TERÁPIA", ""],
+            "MESALAZIN": ["GYULLADÁSOS BETEGSÉGEK GYÓGYSZEREI", "AMINOSZALICILÁTOK", ""],
+            "FINGOLIMOD": ["GYULLADÁSOS BETEGSÉGEK GYÓGYSZEREI", "EGYÉB SZEREK", "Szfingozin-receptor modulátor"],
+            "GLATIRAMER ACETAT": ["GYULLADÁSOS BETEGSÉGEK GYÓGYSZEREI", "EGYÉB SZEREK", ""],
+            "DIMETYL FUMARAT": ["GYULLADÁSOS BETEGSÉGEK GYÓGYSZEREI", "EGYÉB SZEREK", ""],
+            
+            // Osteoarthrosis elleni szerek
+            "HYALURONSAV": ["OSTEOARTHROSIS ELLENI SZEREK", "PORKÉPZŐ SZEREK", ""],
+            "GLUCOSAMIN": ["OSTEOARTHROSIS ELLENI SZEREK", "PORKÉPZŐ SZEREK", ""],
+            "CHONDROITIN SULFAT": ["OSTEOARTHROSIS ELLENI SZEREK", "PORKÉPZŐ SZEREK", ""],
+            
+            // Köszvényellenes szerek
+            "PROBENECID": ["KÖSZVÉNYELLENES SZEREK", "URIKOZÚRIÁS SZEREK", ""],
+            "FENOFIBRAT": ["KÖSZVÉNYELLENES SZEREK", "URIKOZÚRIÁS SZEREK", ""],
+            "ALLOPURINOL": ["KÖSZVÉNYELLENES SZEREK", "URÁT SZINTÉZIST GÁTLÓ SZER", ""],
+            "FEBUXOSTAT": ["KÖSZVÉNYELLENES SZEREK", "URÁT SZINTÉZIST GÁTLÓ SZER", ""],
+            "COLCHICIN": ["KÖSZVÉNYELLENES SZEREK", "LEUKOCYTA MIGRÁCIÓ GÁTLÓ SZER", ""],
+            
+            // Immunmoduláns szerek
+            "INTERFERON ALFA": ["IMMUNMODULÁNS SZEREK", "INTERFERONOK", "vírus, tumor"],
+            "PEGINTERFERON ALFA": ["IMMUNMODULÁNS SZEREK", "INTERFERONOK", "vírus, tumor"],
+            "INTERFERON BETA": ["IMMUNMODULÁNS SZEREK", "INTERFERONOK", "sclerosis multiplex"],
+            "PEGINTERFERON BETA": ["IMMUNMODULÁNS SZEREK", "INTERFERONOK", "sclerosis multiplex"],
+            "INTERFERON GAMMA": ["IMMUNMODULÁNS SZEREK", "INTERFERONOK", "krónikus granulomás betegségek"],
+            "INOSIPLEX": ["IMMUNMODULÁNS SZEREK", "ADJUVÁNSOK", ""],
+            
+            // NSAID
+            "ACETYLSALICYLSAV": ["NSAID", "SZALICILÁTOK", "Irreverzibilis"],
+            "IBUPROFEN": ["NSAID", "ARILPROPIONSAV SZÁRMAZÉKOK", ""],
+            "DEXIBUPROFEN": ["NSAID", "ARILPROPIONSAV SZÁRMAZÉKOK", ""],
+            "KETOPROFEN": ["NSAID", "ARILPROPIONSAV SZÁRMAZÉKOK", ""],
+            "DEXKETOPROFEN": ["NSAID", "ARILPROPIONSAV SZÁRMAZÉKOK", ""],
+            "FLURBIPROFEN": ["NSAID", "ARILPROPIONSAV SZÁRMAZÉKOK", ""],
+            "NAPROXEN": ["NSAID", "ARILPROPIONSAV SZÁRMAZÉKOK", ""],
+            "INDOMETACIN": ["NSAID", "ARILECETSAV SZÁRMAZÉKOK", ""],
+            "DICLOFENAC": ["NSAID", "ARILECETSAV SZÁRMAZÉKOK", ""],
+            "ACECLOFENAC": ["NSAID", "ARILECETSAV SZÁRMAZÉKOK", ""],
+            "PIROXICAM": ["NSAID", "OXICAMOK", ""],
+            "LORNOXICAM": ["NSAID", "OXICAMOK", ""],
+            "MELOXICAM": ["NSAID", "OXICAMOK", ""],
+            "MEFENAMINSAV": ["NSAID", "FENAMATOK", ""],
+            "METAMIZOL": ["NSAID", "PYRAZOLON SZÁRMAZÉKOK", ""],
+            "AMINOPHENAZON": ["NSAID", "PYRAZOLON SZÁRMAZÉKOK", ""],
+            "PROPIPHENAZON": ["NSAID", "PYRAZOLON SZÁRMAZÉKOK", ""],
+            "PHENYLBUTAZON": ["NSAID", "PYRAZOLON SZÁRMAZÉKOK", ""],
+            "NIMESULID": ["NSAID", "COX-2 SZELEKTÍV SZEREK", ""],
+            "CELEOXIB": ["NSAID", "COX-2 SZELEKTÍV SZEREK", ""],
+            "ETORICOXIB": ["NSAID", "COX-2 SZELEKTÍV SZEREK", ""],
+            "PARACETAMOL": ["NSAID", "ANILINEK", ""],
+            
+            // H1-antihisztaminok
+            "PHENIRAMIN": ["H1-ANTIHISZTAMINOK", "I. GENERÁCIÓS ANTIHISZTAMINOK", ""],
+            "CHLOROPYRAMIN": ["H1-ANTIHISZTAMINOK", "I. GENERÁCIÓS ANTIHISZTAMINOK", ""],
+            "DIMETINDEN": ["H1-ANTIHISZTAMINOK", "I. GENERÁCIÓS ANTIHISZTAMINOK", ""],
+            "DIPHENHYDRAMIN": ["H1-ANTIHISZTAMINOK", "I. GENERÁCIÓS ANTIHISZTAMINOK", ""],
+            "PROMETHAZIN": ["H1-ANTIHISZTAMINOK", "I. GENERÁCIÓS ANTIHISZTAMINOK", ""],
+            "CYPROHEPTADIN": ["H1-ANTIHISZTAMINOK", "I. GENERÁCIÓS ANTIHISZTAMINOK", ""],
+            "HYDROXYZIN": ["H1-ANTIHISZTAMINOK", "I. GENERÁCIÓS ANTIHISZTAMINOK", ""],
+            "LORATADIN": ["H1-ANTIHISZTAMINOK", "II. GENERÁCIÓS ANTIHISZTAMINOK", ""],
+            "DESLORATADIN": ["H1-ANTIHISZTAMINOK", "II. GENERÁCIÓS ANTIHISZTAMINOK", ""],
+            "CETIRIZIN": ["H1-ANTIHISZTAMINOK", "II. GENERÁCIÓS ANTIHISZTAMINOK", ""],
+            "LEVOCETIRIZIN": ["H1-ANTIHISZTAMINOK", "II. GENERÁCIÓS ANTIHISZTAMINOK", ""],
+            "FEXOFENADIN": ["H1-ANTIHISZTAMINOK", "II. GENERÁCIÓS ANTIHISZTAMINOK", ""],
+            "BILASTIN": ["H1-ANTIHISZTAMINOK", "II. GENERÁCIÓS ANTIHISZTAMINOK", ""],
+            "AZELASTIN": ["H1-ANTIHISZTAMINOK", "LOKÁLIS SZEREK", ""],
+            "CROMOLYN": ["H1-ANTIHISZTAMINOK", "HISZTAMIN FELSZABADULÁS GÁTLÓ SZEREK", ""],
+            "BETAHISTIN": ["H1-ANTIHISZTAMINOK", "EGYÉB SZEREK", "kevert H1-parciális agonista, H3-antagonista"],
+            
+            // Légúti betegségek gyógyszerei
+            "SALBUTAMOL": ["LÉGÚTI BETEGSÉGEK GYÓGYSZEREI", "HÖRGŐTÁGÍTÓK", "β2-agonisták"],
+            "TERBUTALIN": ["LÉGÚTI BETEGSÉGEK GYÓGYSZEREI", "HÖRGŐTÁGÍTÓK", "β2-agonisták"],
+            "FENOTEROL": ["LÉGÚTI BETEGSÉGEK GYÓGYSZEREI", "HÖRGŐTÁGÍTÓK", "β2-agonisták"],
+            "SALMETEROL": ["LÉGÚTI BETEGSÉGEK GYÓGYSZEREI", "HÖRGŐTÁGÍTÓK", "β2-agonisták"],
+            "FORMOTEROL": ["LÉGÚTI BETEGSÉGEK GYÓGYSZEREI", "HÖRGŐTÁGÍTÓK", "β2-agonisták"],
+            "INDACATEROL": ["LÉGÚTI BETEGSÉGEK GYÓGYSZEREI", "HÖRGŐTÁGÍTÓK", "β2-agonisták"],
+            "IPRATROPIUM": ["LÉGÚTI BETEGSÉGEK GYÓGYSZEREI", "HÖRGŐTÁGÍTÓK", "Antimuszkarin szerek"],
+            "TIOTROPIUM": ["LÉGÚTI BETEGSÉGEK GYÓGYSZEREI", "HÖRGŐTÁGÍTÓK", "Antimuszkarin szerek"],
+            "THEOPHYLLIN": ["LÉGÚTI BETEGSÉGEK GYÓGYSZEREI", "HÖRGŐTÁGÍTÓK", "Xanthin származékok"],
+            "AMINOPHYLLIN": ["LÉGÚTI BETEGSÉGEK GYÓGYSZEREI", "HÖRGŐTÁGÍTÓK", "Xanthin származékok"],
+            "MONTELUKAST": ["LÉGÚTI BETEGSÉGEK GYÓGYSZEREI", "HÖRGŐTÁGÍTÓK", "Leukotrién gátlók"],
+            "BUDESONID": ["LÉGÚTI BETEGSÉGEK GYÓGYSZEREI", "LÉGÚTI GYULLADÁSCSÖKKENTŐK", "Inhalációs szteroidok"],
+            "CICLESONID": ["LÉGÚTI BETEGSÉGEK GYÓGYSZEREI", "LÉGÚTI GYULLADÁSCSÖKKENTŐK", "Inhalációs szteroidok"],
+            "FLUTICASON": ["LÉGÚTI BETEGSÉGEK GYÓGYSZEREI", "LÉGÚTI GYULLADÁSCSÖKKENTŐK", "Inhalációs szteroidok"],
+            "ROFLUMILAST": ["LÉGÚTI BETEGSÉGEK GYÓGYSZEREI", "LÉGÚTI GYULLADÁSCSÖKKENTŐK", "PDE4-gátló"],
+            "OMALIZUMAB": ["LÉGÚTI BETEGSÉGEK GYÓGYSZEREI", "LÉGÚTI GYULLADÁSCSÖKKENTŐK", "IgE elleni antitest"],
+            "DORNASE ALFA": ["LÉGÚTI BETEGSÉGEK GYÓGYSZEREI", "A CYSTICUS FIBROSIS GYÓGYSZEREI", ""],
+            "GUAIFENESIN": ["LÉGÚTI BETEGSÉGEK GYÓGYSZEREI", "KÖPTETŐK", ""],
+            "IPECACUANHA": ["LÉGÚTI BETEGSÉGEK GYÓGYSZEREI", "KÖPTETŐK", ""],
+            "BROMHEXIN": ["LÉGÚTI BETEGSÉGEK GYÓGYSZEREI", "NYÁKOLDÓK", ""],
+            "AMBROXOL": ["LÉGÚTI BETEGSÉGEK GYÓGYSZEREI", "NYÁKOLDÓK", ""],
+            "ACETYLCYSTEIN": ["LÉGÚTI BETEGSÉGEK GYÓGYSZEREI", "NYÁKOLDÓK", ""],
+            "CARBOCYSTEIN": ["LÉGÚTI BETEGSÉGEK GYÓGYSZEREI", "NYÁKOLDÓK", ""],
+            "ERDOSTEIN": ["LÉGÚTI BETEGSÉGEK GYÓGYSZEREI", "NYÁKOLDÓK", ""],
+            "CODEIN": ["LÉGÚTI BETEGSÉGEK GYÓGYSZEREI", "KÖHÖGÉSCSILLAPÍTÓK", "Centrális hatású szerek"],
+            "DIHYDROCODEIN": ["LÉGÚTI BETEGSÉGEK GYÓGYSZEREI", "KÖHÖGÉSCSILLAPÍTÓK", "Centrális hatású szerek"],
+            "DEXTROMETHORPHAN": ["LÉGÚTI BETEGSÉGEK GYÓGYSZEREI", "KÖHÖGÉSCSILLAPÍTÓK", "Centrális hatású szerek"],
+            "BUTAMIRAT": ["LÉGÚTI BETEGSÉGEK GYÓGYSZEREI", "KÖHÖGÉSCSILLAPÍTÓK", "Centrális hatású szerek"],
+            "PRENOXDIAZIN": ["LÉGÚTI BETEGSÉGEK GYÓGYSZEREI", "KÖHÖGÉSCSILLAPÍTÓK", "Perifériás hatású szer"],
+            "LEVODROPROPIZIN": ["LÉGÚTI BETEGSÉGEK GYÓGYSZEREI", "KÖHÖGÉSCSILLAPÍTÓK", "Perifériás hatású szer"],
+            
+            // Antidepresszánsok
+            "IMIPRAMIN": ["ANTIDEPRESSZÁNSOK", "UPTAKE GÁTLÓK", "TCA"],
+            "CLOMIPRAMIN": ["ANTIDEPRESSZÁNSOK", "UPTAKE GÁTLÓK", "TCA"],
+            "AMITRIPTYLIN": ["ANTIDEPRESSZÁNSOK", "UPTAKE GÁTLÓK", "TCA"],
+            "MAPROTILIN": ["ANTIDEPRESSZÁNSOK", "UPTAKE GÁTLÓK", "TCA"],
+            "FLUOXETIN": ["ANTIDEPRESSZÁNSOK", "UPTAKE GÁTLÓK", "SSRI"],
+            "PAROXETIN": ["ANTIDEPRESSZÁNSOK", "UPTAKE GÁTLÓK", "SSRI"],
+            "SERTRALIN": ["ANTIDEPRESSZÁNSOK", "UPTAKE GÁTLÓK", "SSRI"],
+            "CITALOPRAM": ["ANTIDEPRESSZÁNSOK", "UPTAKE GÁTLÓK", "SSRI"],
+            "ESCITALOPRAM": ["ANTIDEPRESSZÁNSOK", "UPTAKE GÁTLÓK", "SSRI"],
+            "VENLAFAXIN": ["ANTIDEPRESSZÁNSOK", "UPTAKE GÁTLÓK", "SNRI"],
+            "DULOXETIN": ["ANTIDEPRESSZÁNSOK", "UPTAKE GÁTLÓK", "SNRI"],
+            "REBOXETIN": ["ANTIDEPRESSZÁNSOK", "UPTAKE GÁTLÓK", "NRI"],
+            "BUPROPION": ["ANTIDEPRESSZÁNSOK", "UPTAKE GÁTLÓK", "NDRI"],
+            "TRAZODON": ["ANTIDEPRESSZÁNSOK", "UPTAKE GÁTLÓK", "SARI"],
+            "VORTIOXETIN": ["ANTIDEPRESSZÁNSOK", "UPTAKE GÁTLÓK", "SMS"],
+            "MOCLOBEMID": ["ANTIDEPRESSZÁNSOK", "MAO-GÁTLÓK", "RIMA"],
+            "MIRTAZAPIN": ["ANTIDEPRESSZÁNSOK", "PRESZINAPTIKUS RECEPTOR GÁTLÓK (NASSA)", ""],
+            "TIANEPTIN": ["ANTIDEPRESSZÁNSOK", "EGYÉB ANTIDEPRESSZÁNSOK", ""],
+            "AGOMELATIN": ["ANTIDEPRESSZÁNSOK", "EGYÉB ANTIDEPRESSZÁNSOK", "Melatonin agonista"],
+            "LITHIUM": ["ANTIDEPRESSZÁNSOK", "ANTIMÁNIÁS ÉS HANGULATSTABILIZÁLÓ SZEREK", ""],
+            "CARBAMAZEPIN": ["ANTIDEPRESSZÁNSOK", "ANTIMÁNIÁS ÉS HANGULATSTABILIZÁLÓ SZEREK", "Antikonvulzív szerek"],
+            "VALPROAT": ["ANTIDEPRESSZÁNSOK", "ANTIMÁNIÁS ÉS HANGULATSTABILIZÁLÓ SZEREK", "Antikonvulzív szerek"],
+            "LAMOTRIGIN": ["ANTIDEPRESSZÁNSOK", "ANTIMÁNIÁS ÉS HANGULATSTABILIZÁLÓ SZEREK", "Antikonvulzív szerek"],
+            "HALOPERIDOL": ["ANTIDEPRESSZÁNSOK", "ANTIMÁNIÁS ÉS HANGULATSTABILIZÁLÓ SZEREK", "Antipszichotikumok"],
+            
+            // Anxiolitikumok és szedatohipnotikumok
+            "DIAZEPAM": ["ANXIOLITIKUMOK ÉS SZEDATOHIPNOTIKUMOK", "BENZODIAZEPIN KÖTŐHELYEN HATÓ SZEREK", "Kispotenciálú szerek"],
+            "CHLORDIAZEPOXID": ["ANXIOLITIKUMOK ÉS SZEDATOHIPNOTIKUMOK", "BENZODIAZEPIN KÖTŐHELYEN HATÓ SZEREK", "Kispotenciálú szerek"],
+            "MEDAZEPAM": ["ANXIOLITIKUMOK ÉS SZEDATOHIPNOTIKUMOK", "BENZODIAZEPIN KÖTŐHELYEN HATÓ SZEREK", "Kispotenciálú szerek"],
+            "ALPRAZOLAM": ["ANXIOLITIKUMOK ÉS SEDATOHIPNOTIKUMOK", "BENZODIAZEPIN KÖTŐHELYEN HATÓ SZEREK", "Nagypotenciálú szerek"],
+            "CLONAZEPAM": ["ANXIOLITIKUMOK ÉS SEDATOHIPNOTIKUMOK", "BENZODIAZEPIN KÖTŐHELYEN HATÓ SZEREK", "Nagypotenciálú szerek"],
+            "LORAZEPAM": ["ANXIOLITIKUMOK ÉS SEDATOHIPNOTIKUMOK", "BENZODIAZEPIN KÖTŐHELYEN HATÓ SZEREK", "Nagypotenciálú szerek"],
+            "MIDAZOLAM": ["ANXIOLITIKUMOK ÉS SEDATOHIPNOTIKUMOK", "BENZODIAZEPIN KÖTŐHELYEN HATÓ SZEREK", "Rövid hatású szerek -- altatók"],
+            "CINOLAZEPAM": ["ANXIOLITIKUMOK ÉS SEDATOHIPNOTIKUMOK", "BENZODIAZEPIN KÖTŐHELYEN HATÓ SZEREK", "Rövid hatású szerek -- altatók"],
+            "BROTIZOLAM": ["ANXIOLITIKUMOK ÉS SEDATOHIPNOTIKUMOK", "BENZODIAZEPIN KÖTŐHELYEN HATÓ SZEREK", "Rövid hatású szerek -- altatók"],
+            "TEMAZEPAM": ["ANXIOLITIKUMOK ÉS SEDATOHIPNOTIKUMOK", "BENZODIAZEPIN KÖTŐHELYEN HATÓ SZEREK", "Rövid hatású szerek -- altatók"],
+            "NITRAZEPAM": ["ANXIOLITIKUMOK ÉS SEDATOHIPNOTIKUMOK", "BENZODIAZEPIN KÖTŐHELYEN HATÓ SZEREK", "Rövid hatású szerek -- altatók"],
+            "ZOPICLON": ["ANXIOLITIKUMOK ÉS SEDATOHIPNOTIKUMOK", "BENZODIAZEPIN KÖTŐHELYEN HATÓ SZEREK", "Nem BDZ szerkezetű altatók"],
+            "ZOLPIDEM": ["ANXIOLITIKUMOK ÉS SEDATOHIPNOTIKUMOK", "BENZODIAZEPIN KÖTŐHELYEN HATÓ SZEREK", "Nem BDZ szerkezetű altatók"],
+            "ZALEPLON": ["ANXIOLITIKUMOK ÉS SEDATOHIPNOTIKUMOK", "BENZODIAZEPIN KÖTŐHELYEN HATÓ SZEREK", "Nem BDZ szerkezetű altatók"],
+            "FLUMAZENIL": ["ANXIOLITIKUMOK ÉS SEDATOHIPNOTIKUMOK", "BENZODIAZEPIN KÖTŐHELYEN HATÓ SZEREK", "Antagonista"],
+            "BUSPIRON": ["ANXIOLITIKUMOK ÉS SEDATOHIPNOTIKUMOK", "5-HT1A-PARCIÁLIS AGONISTÁK", ""],
+            "THIOPENTAL": ["ANXIOLITIKUMOK ÉS SEDATOHIPNOTIKUMOK", "BARBITURÁTOK", "Intravénás narkotikum"],
+            "PHENOBARBITAL": ["ANXIOLITIKUMOK ÉS SEDATOHIPNOTIKUMOK", "BARBITURÁTOK", "Antikonvulzív szer"],
+            "PROPRANOLOL": ["ANXIOLITIKUMOK ÉS SEDATOHIPNOTIKUMOK", "β-BLOKKOLÓK", ""],
+            "ATENOLOL": ["ANXIOLITIKUMOK ÉS SEDATOHIPNOTIKUMOK", "β-BLOKKOLÓK", ""],
+            
+            // Antipszichotikumok
+            "CHLORPROMAZIN": ["ANTIPSZICHOTIKUMOK", "I. GENERÁCIÓ (TÍPUSOS SZEREK)", "Kispotenciálú szerek"],
+            "FLUPENTHIXOL": ["ANTIPSZICHOTIKUMOK", "I. GENERÁCIÓ (TÍPUSOS SZEREK)", "Nagypotenciálú szerek"],
+            "HALOPERIDOL": ["ANTIPSZICHOTIKUMOK", "I. GENERÁCIÓ (TÍPUSOS SZEREK)", "Nagypotenciálú szerek"],
+            "TIAPRID": ["ANTIPSZICHOTIKUMOK", "II. GENERÁCIÓ (ATÍPUSOS SZEREK)", ""],
+            "AMISULPRID": ["ANTIPSZICHOTIKUMOK", "II. GENERÁCIÓ (ATÍPUSOS SZEREK)", ""],
+            "CLOZAPIN": ["ANTIPSZICHOTIKUMOK", "II. GENERÁCIÓ (ATÍPUSOS SZEREK)", ""],
+            "OLANZAPIN": ["ANTIPSZICHOTIKUMOK", "II. GENERÁCIÓ (ATÍPUSOS SZEREK)", ""],
+            "QUETIAPIN": ["ANTIPSZICHOTIKUMOK", "II. GENERÁCIÓ (ATÍPUSOS SZEREK)", ""],
+            "RISPERIDON": ["ANTIPSZICHOTIKUMOK", "II. GENERÁCIÓ (ATÍPUSOS SZEREK)", ""],
+            "PALIPERIDON": ["ANTIPSZICHOTIKUMOK", "II. GENERÁCIÓ (ATÍPUSOS SZEREK)", ""],
+            "ARIPIPRAZOL": ["ANTIPSZICHOTIKUMOK", "II. GENERÁCIÓ (ATÍPUSOS SZEREK)", ""],
+            "CARIPRAZIN": ["ANTIPSZICHOTIKUMOK", "II. GENERÁCIÓ (ATÍPUSOS SZEREK)", ""],
+            
+            // Neurodegeneratív betegségek gyógyszerei
+            "DONEPEZIL": ["NEURODEGENERATÍV BETEGSÉGEK GYÓGYSZEREI", "AZ ALZHEIMER DEMENCIA GYÓGYSZEREI", "Kolinészteráz-gátlók"],
+            "RIVASTIGMIN": ["NEURODEGENERATÍV BETEGSÉGEK GYÓGYSZEREI", "AZ ALZHEIMER DEMENCIA GYÓGYSZEREI", "Kolinészteráz-gátlók"],
+            "MEMANTIN": ["NEURODEGENERATÍV BETEGSÉGEK GYÓGYSZEREI", "AZ ALZHEIMER DEMENCIA GYÓGYSZEREI", "NMDA-antagonista"],
+            "PIRACETAM": ["NEURODEGENERATÍV BETEGSÉGEK GYÓGYSZEREI", "AZ ALZHEIMER DEMENCIA GYÓGYSZEREI", "Nootrop szerek"],
+            "LEVODOPA + CARBIDOPA": ["NEURODEGENERATÍV BETEGSÉGEK GYÓGYSZEREI", "A PARKINSON-KÓR GYÓGYSZEREI", "Szubsztitúciós terápia"],
+            "ENTACAPON": ["NEURODEGENERATÍV BETEGSÉGEK GYÓGYSZEREI", "A PARKINSON-KÓR GYÓGYSZEREI", "COMT-gátlók"],
+            "ROPINIROL": ["NEURODEGENERATÍV BETEGSÉGEK GYÓGYSZEREI", "A PARKINSON-KÓR GYÓGYSZEREI", "Dopamin-agonisták"],
+            "PRAMIPEXOL": ["NEURODEGENERATÍV BETEGSÉGEK GYÓGYSZEREI", "A PARKINSON-KÓR GYÓGYSZEREI", "Dopamin-agonisták"],
+            "ROTIGOTIN": ["NEURODEGENERATÍV BETEGSÉGEK GYÓGYSZEREI", "A PARKINSON-KÓR GYÓGYSZEREI", "Dopamin-agonisták"],
+            "SELEGILIN": ["NEURODEGENERATÍV BETEGSÉGEK GYÓGYSZEREI", "A PARKINSON-KÓR GYÓGYSZEREI", "MAO-B gátlók"],
+            "RASAGILIN": ["NEURODEGENERATÍV BETEGSÉGEK GYÓGYSZEREI", "A PARKINSON-KÓR GYÓGYSZEREI", "MAO-B gátlók"],
+            "SAFINAMID": ["NEURODEGENERATÍV BETEGSÉGEK GYÓGYSZEREI", "A PARKINSON-KÓR GYÓGYSZEREI", "MAO-B gátlók"],
+            "AMANTADIN": ["NEURODEGENERATÍV BETEGSÉGEK GYÓGYSZEREI", "A PARKINSON-KÓR GYÓGYSZEREI", "NMDA-antagonista"],
+            "BIPERIDEN": ["NEURODEGENERATÍV BETEGSÉGEK GYÓGYSZEREI", "A PARKINSON-KÓR GYÓGYSZEREI", "Antikolinerg szerek"],
+            "PROCYCLIDIN": ["NEURODEGENERATÍV BETEGSÉGEK GYÓGYSZEREI", "A PARKINSON-KÓR GYÓGYSZEREI", "Antikolinerg szerek"],
+            "RILUZOL": ["NEURODEGENERATÍV BETEGSÉGEK GYÓGYSZEREI", "EGYÉB NEURODEGENERATÍV BETEGSÉGEK GYÓGYSZEREI", "ALS"],
+            "TETRABENAZIN": ["NEURODEGENERATÍV BETEGSÉGEK GYÓGYSZEREI", "EGYÉB NEURODEGENERATÍV BETEGSÉGEK GYÓGYSZEREI", "Huntington chorea"],
+            
+            // Antiepileptikumok
+            "PHENYTOIN": ["ANTIEPILEPTIKUMOK", "NA+-CSATORNA GÁTLÓK", "Tiszta Na+-csatorna gátlók"],
+            "CARBAMAZEPIN": ["ANTIEPILEPTIKUMOK", "NA+-CSATORNA GÁTLÓK", "Tiszta Na+-csatorna gátlók"],
+            "OXCARBAZEPIN": ["ANTIEPILEPTIKUMOK", "NA+-CSATORNA GÁTLÓK", "Tiszta Na+-csatorna gátlók"],
+            "VALPROAT": ["ANTIEPILEPTIKUMOK", "NA+-CSATORNA GÁTLÓK", "Na+-csatorna gátlók jelentős egyéb hatáskomponenssel"],
+            "LAMOTRIGIN": ["ANTIEPILEPTIKUMOK", "NA+-CSATORNA GÁTLÓK", "Na+-csatorna gátlók jelentős egyéb hatáskomponenssel"],
+            "TOPIRAMAT": ["ANTIEPILEPTIKUMOK", "NA+-CSATORNA GÁTLÓK", "Na+-csatorna gátlók jelentős egyéb hatáskomponenssel"],
+            "ZONISAMID": ["ANTIEPILEPTIKUMOK", "NA+-CSATORNA GÁTLÓK", "Na+-csatorna gátlók jelentős egyéb hatáskomponenssel"],
+            "LACOSAMID": ["ANTIEPILEPTIKUMOK", "NA+-CSATORNA GÁTLÓK", "Egyéb Na+-csatorna moduláló gyógyszerek"],
+            "GABAPENTIN": ["ANTIEPILEPTIKUMOK", "CA2+-CSATORNA GÁTLÓK", ""],
+            "PREGABALIN": ["ANTIEPILEPTIKUMOK", "CA2+-CSATORNA GÁTLÓK", ""],
+            "VIGABATRIN": ["ANTIEPILEPTIKUMOK", "GABA MIMETIKUMOK", ""],
+            "CLONAZEPAM": ["ANTIEPILEPTIKUMOK", "GABA MIMETIKUMOK", "Benzodiazepinek"],
+            "CLOBAZAM": ["ANTIEPILEPTIKUMOK", "GABA MIMETIKUMOK", "Benzodiazepinek"],
+            "DIAZEPAM": ["ANTIEPILEPTIKUMOK", "GABA MIMETIKUMOK", "Benzodiazepinek"],
+            "PHENOBARBITAL": ["ANTIEPILEPTIKUMOK", "GABA MIMETIKUMOK", ""],
+            "LEVETIRACETAM": ["ANTIEPILEPTIKUMOK", "EGYÉB SZEREK", "SV2A"],
+            
+            // Centrális izomrelaxánsok
+            "CHLORZOXAZON": ["CENTRÁLIS IZOMRELAXÁNSOK", "POLISZINAPTIKUS REFLEXEKET GÁTLÓ SZEREK", ""],
+            "GUAIFENESIN": ["CENTRÁLIS IZOMRELAXÁNSOK", "POLISZINAPTIKUS REFLEXEKET GÁTLÓ SZEREK", ""],
+            "BACLOFEN": ["CENTRÁLIS IZOMRELAXÁNSOK", "GABAB-AGONISTA", ""],
+            "TIZANIDIN": ["CENTRÁLIS IZOMRELAXÁNSOK", "CNS α2-AGONISTA", ""],
+            "TOLPERISON": ["CENTRÁLIS IZOMRELAXÁNSOK", "NA+-CSATORNA GÁTLÓ", ""],
+            
+            // A migrén gyógyszerei
+            "SUMATRIPTAN": ["A MIGRÉN GYÓGYSZEREI", "ROHAMKEZELÉS", "5-HT1B/1D/1F-agonisták"],
+            "ZOLMITRIPTAN": ["A MIGRÉN GYÓGYSZEREI", "ROHAMKEZELÉS", "5-HT1B/1D/1F-agonisták"],
+            "ERGOTAMIN": ["A MIGRÉN GYÓGYSZEREI", "ROHAMKEZELÉS", "5-HT1B/1D/1F-agonisták"],
+            "METOCLOPRAMID": ["A MIGRÉN GYÓGYSZEREI", "ROHAMKEZELÉS", "Hányáscsillapítók, prokinetikus szerek"],
+            "DOMPERIDON": ["A MIGRÉN GYÓGYSZEREI", "ROHAMKEZELÉS", "Hányáscsillapítók, prokinetikus szerek"],
+            "PROPRANOLOL": ["A MIGRÉN GYÓGYSZEREI", "MEGELŐZŐ KEZELÉS (PROFILAXIS)", "β-Blokkolók"],
+            "METOPROLOL": ["A MIGRÉN GYÓGYSZEREI", "MEGELŐZŐ KEZELÉS (PROFILAXIS)", "β-Blokkolók"],
+            "FLUNARIZIN": ["A MIGRÉN GYÓGYSZEREI", "MEGELŐZŐ KEZELÉS (PROFILAXIS)", "Kalcium-antagonisták"],
+            "VALPROAT": ["A MIGRÉN GYÓGYSZEREI", "MEGELŐZŐ KEZELÉS (PROFILAXIS)", "Antiepileptikum"],
+            "TOPIRAMAT": ["A MIGRÉN GYÓGYSZEREI", "MEGELŐZŐ KEZELÉS (PROFILAXIS)", "Antiepileptikum"],
+            "AMITRIPTYLIN": ["A MIGRÉN GYÓGYSZEREI", "MEGELŐZŐ KEZELÉS (PROFILAXIS)", "Antidepresszánsok"],
+            "ERENUMAB": ["A MIGRÉN GYÓGYSZEREI", "MEGELŐZŐ KEZELÉS (PROFILAXIS)", "CGRP-receptor gátlók"],
+            "RIMEGEPANT": ["A MIGRÉN GYÓGYSZEREI", "MEGELŐZŐ KEZELÉS (PROFILAXIS)", "CGRP-receptor gátlók"],
+            "RIBOFLAVIN": ["A MIGRÉN GYÓGYSZEREI", "MEGELŐZŐ KEZELÉS (PROFILAXIS)", ""],
+            
+            // Opioidok
+            "MORPHIN": ["OPIOIDOK", "ERŐS AGONISTÁK", "Opiátok"],
+            "OXYCODON": ["OPIOIDOK", "ERŐS AGONISTÁK", "Opiátok"],
+            "PETHIDIN": ["OPIOIDOK", "ERŐS AGONISTÁK", "Fenil-piperidinek"],
+            "FENTANYL": ["OPIOIDOK", "ERŐS AGONISTÁK", "Fenil-piperidinek"],
+            "METHADON": ["OPIOIDOK", "ERŐS AGONISTÁK", "Difenil-heptánok"],
+            "CODEIN": ["OPIOIDOK", "GYENGE AGONISTÁK", "Opiátok"],
+            "DIHYDROCODEIN": ["OPIOIDOK", "GYENGE AGONISTÁK", "Opiátok"],
+            "DEXTROMETHORPHAN": ["OPIOIDOK", "GYENGE AGONISTÁK", "Morfinán vázasak"],
+            "DIPHENOXYLAT": ["OPIOIDOK", "GYENGE AGONISTÁK", "Fenil-piperidinek"],
+            "LOPERAMID": ["OPIOIDOK", "GYENGE AGONISTÁK", "Fenil-piperidinek"],
+            "TRAMADOL": ["OPIOIDOK", "GYENGE AGONISTÁK", "Egyéb szer"],
+            "NALBUPHIN": ["OPIOIDOK", "KEVERT κ-AGONISTA/μ-ANTAGONISTA", ""],
+            "BUPRENORPHIN": ["OPIOIDOK", "PARCIÁLIS AGONISTA", ""],
+            "NALOXON": ["OPIOIDOK", "ANTAGONISTÁK", ""],
+            "NALTREXON": ["OPIOIDOK", "ANTAGONISTÁK", ""],
+            "METHYLNALTREXON": ["OPIOIDOK", "ANTAGONISTÁK", ""],
+            
+            // Egyéb (nem opioid) analgetikumok
+            "CAPSAICIN": ["EGYÉB (NEM OPIOID) ANALGETIKUMOK", "VANILLOID RECEPTOR LIGANDOK", ""],
+            "ZICONOTID": ["EGYÉB (NEM OPIOID) ANALGETIKUMOK", "N-CA2+-CSATORNA GÁTLÓ", ""],
+            
+            // Általános érzéstelenítők
+            "HALOTHAN": ["ÁLTALÁNOS ÉRZÉSTELENÍTŐK", "INHALÁCIÓS NARKOTIKUMOK", "Halogénezett szénhidrogének"],
+            "ISOFLURAN": ["ÁLTALÁNOS ÉRZÉSTELENÍTŐK", "INHALÁCIÓS NARKOTIKUMOK", "Halogénezett szénhidrogének"],
+            "DESFLURAN": ["ÁLTALÁNOS ÉRZÉSTELENÍTŐK", "INHALÁCIÓS NARKOTIKUMOK", "Halogénezett szénhidrogének"],
+            "SEVOFLURAN": ["ÁLTALÁNOS ÉRZÉSTELENÍTŐK", "INHALÁCIÓS NARKOTIKUMOK", "Halogénezett szénhidrogének"],
+            "NITROGENOXYDUL": ["ÁLTALÁNOS ÉRZÉSTELENÍTŐK", "INHALÁCIÓS NARKOTIKUMOK", ""],
+            "THIOPENTAL": ["ÁLTALÁNOS ÉRZÉSTELENÍTŐK", "INTRAVÉNÁS NARKOTIKUMOK ÉS ROKON SZEREK", "Barbiturátok"],
+            "ETOMIDAT": ["ÁLTALÁNOS ÉRZÉSTELENÍTŐK", "INTRAVÉNÁS NARKOTIKUMOK ÉS ROKON SZEREK", ""],
+            "PROPOFOL": ["ÁLTALÁNOS ÉRZÉSTELENÍTŐK", "INTRAVÉNÁS NARKOTIKUMOK ÉS ROKON SZEREK", ""],
+            "MIDAZOLAM": ["ÁLTALÁNOS ÉRZÉSTELENÍTŐK", "INTRAVÉNÁS NARKOTIKUMOK ÉS ROKON SZEREK", "Benzodiazepinek"],
+            "KETAMIN": ["ÁLTALÁNOS ÉRZÉSTELENÍTŐK", "INTRAVÉNÁS NARKOTIKUMOK ÉS ROKON SZEREK", ""],
+            "DEXMEDETOMIDIN": ["ÁLTALÁNOS ÉRZÉSTELENÍTŐK", "INTRAVÉNÁS NARKOTIKUMOK ÉS ROKON SZEREK", ""],
+            
+            // Helyi érzéstelenítők
+            "COCAIN": ["HELYI ÉRZÉSTELENÍTŐK", "ÉSZTEREK", ""],
+            "BENZOCAIN": ["HELYI ÉRZÉSTELENÍTŐK", "ÉSZTEREK", ""],
+            "PROCAIN": ["HELYI ÉRZÉSTELENÍTŐK", "ÉSZTEREK", ""],
+            "TETRACAIN": ["HELYI ÉRZÉSTELENÍTŐK", "ÉSZTEREK", ""],
+            "LIDOCAIN": ["HELYI ÉRZÉSTELENÍTŐK", "AMIDOK", ""],
+            "PRILOCAIN": ["HELYI ÉRZÉSTELENÍTŐK", "AMIDOK", ""],
+            "BUPIVACAIN": ["HELYI ÉRZÉSTELENÍTŐK", "AMIDOK", ""],
+            "ROPIVACAIN": ["HELYI ÉRZÉSTELENÍTŐK", "AMIDOK", ""],
+            "ARTICAIN": ["HELYI ÉRZÉSTELENÍTŐK", "AMIDOK", ""],
+            
+            // Abúzus- és abúzus elleni szerek
+            "METHYLPHENIDAT": ["ABÚZUS- ÉS ABÚZUS ELLENI SZEREK", "PSZICHOSTIMULÁNSOK", ""],
+            "COCAIN": ["ABÚZUS- ÉS ABÚZUS ELLENI SZEREK", "PSZICHOSTIMULÁNSOK", ""],
+            "COFFEIN": ["ABÚZUS- ÉS ABÚZUS ELLENI SZEREK", "PSZICHOSTIMULÁNSOK", ""],
+            "THEOPHYLLIN": ["ABÚZUS- ÉS ABÚZUS ELLENI SZEREK", "PSZICHOSTIMULÁNSOK", ""],
+            "KETAMIN": ["ABÚZUS- ÉS ABÚZUS ELLENI SZEREK", "PSZICHOTOMIMETIKUMOK", ""],
+            "NICOTIN": ["ABÚZUS- ÉS ABÚZUS ELLENI SZEREK", "ADDIKTÍV KÓRKÉPEKBEN HASZNÁLT GYÓGYSZEREK", "Nikotin függőség kezelése"],
+            "VARENICLIN": ["ABÚZUS- ÉS ABÚZUS ELLENI SZEREK", "ADDIKTÍV KÓRKÉPEKBEN HASZNÁLT GYÓGYSZEREK", "Nikotin függőség kezelése"],
+            "DISULFIRAM": ["ABÚZUS- ÉS ABÚZUS ELLENI SZEREK", "ADDIKTÍV KÓRKÉPEKBEN HASZNÁLT GYÓGYSZEREK", "Alkohol függőség kezelése"]
+        };
+
+        // A hierarchia felépítése a választható opciókhoz
+        const hierarchy = {
+            "GLUKOKORTIKOIDOK": {
+                "SZISZTÉMÁS SZEREK": ["Természetes hormonok", "Mineralokortikoid hatású szer"],
+                "CSAK LOKÁLISAN ALKALMAZOTT SZEREK": []
+            },
+            "IMMUNSZUPPRESSZÍV SZEREK": {
+                "TRANSZPLANTÁCIÓ GYÓGYSZEREI": ["Calcineurin-gátlók", "mTOR-gátlók", "IL-2R-antitestek", "Kostimuláció (CD80/86) gátló", "Purin antimetabolitok"],
+                "": []
+            },
+            "GYULLADÁSOS BETEGSÉGEK GYÓGYSZEREI": {
+                "DMARD SZEREK (SZINTETIKUS)": ["PDE4-gátlók", "JAK-kináz gátlók", "Egyéb"],
+                "ANTICITOKIN TERÁPIA": ["TNF-α", "IL-1β", "IL-6R", "IL-12/23"],
+                "ANTI-LYMPHOCYTA TERÁPIA": ["CD20", "CD52"],
+                "ANTIADHÉZIÓS TERÁPIA": [],
+                "AMINOSZALICILÁTOK": [],
+                "EGYÉB SZEREK": ["Szfingozin-receptor modulátor"]
+            },
+            "OSTEOARTHROSIS ELLENI SZEREK": {
+                "PORKÉPZŐ SZEREK": []
+            },
+            "KÖSZVÉNYELLENES SZEREK": {
+                "URIKOZÚRIÁS SZEREK": [],
+                "URÁT SZINTÉZIST GÁTLÓ SZER": [],
+                "LEUKOCYTA MIGRÁCIÓ GÁTLÓ SZER": []
+            },
+            "IMMUNMODULÁNS SZEREK": {
+                "INTERFERONOK": ["vírus, tumor", "sclerosis multiplex", "krónikus granulomás betegségek"],
+                "ADJUVÁNSOK": []
+            },
+            "NSAID": {
+                "SZALICILÁTOK": ["Irreverzibilis"],
+                "ARILPROPIONSAV SZÁRMAZÉKOK": [],
+                "ARILECETSAV SZÁRMAZÉKOK": [],
+                "OXICAMOK": [],
+                "FENAMATOK": [],
+                "PYRAZOLON SZÁRMAZÉKOK": [],
+                "COX-2 SZELEKTÍV SZEREK": [],
+                "ANILINEK": []
+            },
+            "H1-ANTIHISZTAMINOK": {
+                "I. GENERÁCIÓS ANTIHISZTAMINOK": [],
+                "II. GENERÁCIÓS ANTIHISZTAMINOK": [],
+                "LOKÁLIS SZEREK": [],
+                "HISZTAMIN FELSZABADULÁS GÁTLÓ SZEREK": [],
+                "EGYÉB SZEREK": ["kevert H1-parciális agonista, H3-antagonista"]
+            },
+            "LÉGÚTI BETEGSÉGEK GYÓGYSZEREI": {
+                "HÖRGŐTÁGÍTÓK": ["β2-agonisták", "Antimuszkarin szerek", "Xanthin származékok", "Leukotrién gátlók"],
+                "LÉGÚTI GYULLADÁSCSÖKKENTŐK": ["Inhalációs szteroidok", "PDE4-gátló", "IgE elleni antitest"],
+                "A CYSTICUS FIBROSIS GYÓGYSZEREI": [],
+                "KÖPTETŐK": [],
+                "NYÁKOLDÓK": [],
+                "KÖHÖGÉSCSILLAPÍTÓK": ["Centrális hatású szerek", "Perifériás hatású szer"]
+            },
+            "ANTIDEPRESSZÁNSOK": {
+                "UPTAKE GÁTLÓK": ["TCA", "SSRI", "SNRI", "NRI", "NDRI", "SARI", "SMS"],
+                "MAO-GÁTLÓK": ["RIMA"],
+                "PRESZINAPTIKUS RECEPTOR GÁTLÓK (NASSA)": [],
+                "EGYÉB ANTIDEPRESSZÁNSOK": ["Melatonin agonista"],
+                "ANTIMÁNIÁS ÉS HANGULATSTABILIZÁLÓ SZEREK": ["Antikonvulzív szerek", "Antipszichotikumok"]
+            },
+            "ANXIOLITIKUMOK ÉS SZEDATOHIPNOTIKUMOK": {
+                "BENZODIAZEPIN KÖTŐHELYEN HATÓ SZEREK": ["Kispotenciálú szerek", "Nagypotenciálú szerek", "Rövid hatású szerek -- altatók", "Nem BDZ szerkezetű altatók", "Antagonista"],
+                "5-HT1A-PARCIÁLIS AGONISTÁK": [],
+                "BARBITURÁTOK": ["Intravénás narkotikum", "Antikonvulzív szer"],
+                "β-BLOKKOLÓK": []
+            },
+            "ANTIPSZICHOTIKUMOK": {
+                "I. GENERÁCIÓ (TÍPUSOS SZEREK)": ["Kispotenciálú szerek", "Nagypotenciálú szerek"],
+                "II. GENERÁCIÓ (ATÍPUSOS SZEREK)": []
+            },
+            "NEURODEGENERATÍV BETEGSÉGEK GYÓGYSZEREI": {
+                "AZ ALZHEIMER DEMENCIA GYÓGYSZEREI": ["Kolinészteráz-gátlók", "NMDA-antagonista", "Nootrop szerek"],
+                "A PARKINSON-KÓR GYÓGYSZEREI": ["Szubsztitúciós terápia", "COMT-gátlók", "Dopamin-agonisták", "MAO-B gátlók", "NMDA-antagonista", "Antikolinerg szerek"],
+                "EGYÉB NEURODEGENERATÍV BETEGSÉGEK GYÓGYSZEREI": ["ALS", "Huntington chorea"]
+            },
+            "ANTIEPILEPTIKUMOK": {
+                "NA+-CSATORNA GÁTLÓK": ["Tiszta Na+-csatorna gátlók", "Na+-csatorna gátlók jelentős egyéb hatáskomponenssel", "Egyéb Na+-csatorna moduláló gyógyszerek"],
+                "CA2+-CSATORNA GÁTLÓK": [],
+                "GABA MIMETIKUMOK": ["Benzodiazepinek"],
+                "EGYÉB SZEREK": ["SV2A"]
+            },
+            "CENTRÁLIS IZOMRELAXÁNSOK": {
+                "POLISZINAPTIKUS REFLEXEKET GÁTLÓ SZEREK": [],
+                "GABAB-AGONISTA": [],
+                "CNS α2-AGONISTA": [],
+                "NA+-CSATORNA GÁTLÓ": []
+            },
+            "A MIGRÉN GYÓGYSZEREI": {
+                "ROHAMKEZELÉS": ["5-HT1B/1D/1F-agonisták", "Hányáscsillapítók, prokinetikus szerek"],
+                "MEGELŐZŐ KEZELÉS (PROFILAXIS)": ["β-Blokkolók", "Kalcium-antagonisták", "Antiepileptikum", "Antidepresszánsok", "CGRP-receptor gátlók"]
+            },
+            "OPIOIDOK": {
+                "ERŐS AGONISTÁK": ["Opiátok", "Fenil-piperidinek", "Difenil-heptánok"],
+                "GYENGE AGONISTÁK": ["Opiátok", "Morfinán vázasak", "Fenil-piperidinek", "Egyéb szer"],
+                "KEVERT κ-AGONISTA/μ-ANTAGONISTA": [],
+                "PARCIÁLIS AGONISTA": [],
+                "ANTAGONISTÁK": []
+            },
+            "EGYÉB (NEM OPIOID) ANALGETIKUMOK": {
+                "VANILLOID RECEPTOR LIGANDOK": [],
+                "N-CA2+-CSATORNA GÁTLÓ": []
+            },
+            "ÁLTALÁNOS ÉRZÉSTELENÍTŐK": {
+                "INHALÁCIÓS NARKOTIKUMOK": ["Halogénezett szénhidrogének"],
+                "INTRAVÉNÁS NARKOTIKUMOK ÉS ROKON SZEREK": ["Barbiturátok", "Benzodiazepinek"]
+            },
+            "HELYI ÉRZÉSTELENÍTŐK": {
+                "ÉSZTEREK": [],
+                "AMIDOK": []
+            },
+            "ABÚZUS- ÉS ABÚZUS ELLENI SZEREK": {
+                "PSZICHOSTIMULÁNSOK": [],
+                "PSZICHOTOMIMETIKUMOK": [],
+                "ADDIKTÍV KÓRKÉPEKBEN HASZNÁLT GYÓGYSZEREK": ["Nikotin függőség kezelése", "Alkohol függőség kezelése"]
+            }
+        };
+
+        // Játékállapot változók
+        let currentDrug = "";
+        let correctAnswers = [];
+        let score = 0;
+        let totalQuestions = 0;
+        let usedDrugs = [];
+
+        // DOM elemek
+        const drugDisplay = document.getElementById("current-drug");
+        const level1Select = document.getElementById("level1");
+        const level2Select = document.getElementById("level2");
+        const level3Select = document.getElementById("level3");
+        const checkButton = document.getElementById("check-button");
+        const nextButton = document.getElementById("next-button");
+        const feedbackDiv = document.getElementById("feedback");
+        const scoreSpan = document.getElementById("score");
+        const totalSpan = document.getElementById("total");
+
+        // Eseményfigyelők
+        level1Select.addEventListener("change", updateLevel2Options);
+        level2Select.addEventListener("change", updateLevel3Options);
+        checkButton.addEventListener("click", checkAnswers);
+        nextButton.addEventListener("click", nextQuestion);
+
+        // Játék inicializálása
+        function initGame() {
+            // Betöltjük az első szint opcióit
+            loadLevel1Options();
+            // Kezdjük a játékot
+            next
